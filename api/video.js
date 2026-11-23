@@ -24,10 +24,17 @@ export default async function handler(req, res) {
   }
 
   const headers = {
-    Referer: "https://filmboom.top/",
+    // JANGAN kirim Referer: tes menunjukkan Referer filmboom.top / mzfi.me
+    // justru dibalas CDN dengan 426 Forbidden, baik dari IP VM maupun Vercel.
+    // Tanpa Referer, CDN membalas 429 dari IP yang sudah sering request —
+    // jadi diuji dulu tanpa Referer dari IP Vercel yang masih bersih.
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     Accept: "video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5",
+    "Accept-Encoding": "identity",
+    "Sec-Fetch-Dest": "video",
+    "Sec-Fetch-Mode": "no-cors",
+    "Sec-Fetch-Site": "cross-site",
   };
   // Teruskan Range supaya seek di video tetap jalan
   if (req.headers.range) headers.Range = req.headers.range;
