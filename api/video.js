@@ -1,15 +1,16 @@
 // Vercel Serverless Function — proxy video MP4 MovieBox
-// Dipakai kalau <video> di browser tidak mau memutar URL MP4 langsung
-// (CDN bcdnxw.hakunaymatata.com membalas 429/426 dari IP/browser tertentu,
-// atau Referer halaman website ditolak).
+// Dipakai kalau <video> di browser tidak mau memutar URL MP4 langsung.
+// HASIL INSPECT USER 2026-11-24 (dari HP-nya, Brave Android, berhasil 206):
+// request video yang JALAN mengirim Referer + Origin https://themoviebox.xyz/
+// (BUKAN filmboom.top, BUKAN mzfi.me, BUKAN tanpa Referer), sec-fetch-mode
+// cors, sec-fetch-dest video, sec-fetch-site cross-site, Range bytes=0-,
+// dan CDN membalas 206 Partial Content + access-control-allow-origin: *.
+// Tes dari server (IP datacenter) dengan Referer yang sama ke URL yang
+// sign-nya diterbitkan untuk IP HP user tetap dibalas 426 — jadi sign di URL
+// terikat IP yang meminta play. Karena itu proxy ini HARUS dipakai berpasangan
+// dengan /api/play dari Vercel yang sama: sign diterbitkan untuk IP Vercel,
+// lalu video diambil dari IP Vercel yang sama, dengan Referer themoviebox.xyz.
 // Cara pakai: {proxy}/api/video?url=<encodeURIComponent(url MP4)>
-// Website memanggil endpoint ini sebagai src <video>, jadi request ke CDN
-// dikirim dari server Vercel (bukan dari browser), dengan Referer filmboom.top
-// seperti di aplikasi Android (loadDataWithBaseURL "https://filmboom.top/").
-//
-// Catatan: streaming video lewat serverless Vercel memakan bandwidth dan
-// durasi function. Pakai hanya sebagai fallback kalau direct + iframe
-// tidak jalan. Jangan dipakai untuk trailer (trailer dari macdn jalan direct).
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -24,16 +25,16 @@ export default async function handler(req, res) {
   }
 
   const headers = {
-    // JANGAN kirim Referer: tes menunjukkan Referer filmboom.top / mzfi.me
-    // justru dibalas CDN dengan 426 Forbidden, baik dari IP VM maupun Vercel.
-    // Tanpa Referer, CDN membalas 429 dari IP yang sudah sering request —
-    // jadi diuji dulu tanpa Referer dari IP Vercel yang masih bersih.
+    // Referer + Origin persis seperti request yang jalan di HP user (inspect 2026-11-24)
+    Referer: "https://themoviebox.xyz/",
+    Origin: "https://themoviebox.xyz",
     "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    Accept: "video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5",
+      "Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Mobile Safari/537.36",
+    Accept: "*/*",
     "Accept-Encoding": "identity",
+    "Accept-Language": "id-ID,id;q=0.5",
     "Sec-Fetch-Dest": "video",
-    "Sec-Fetch-Mode": "no-cors",
+    "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "cross-site",
   };
   // Teruskan Range supaya seek di video tetap jalan
